@@ -1,13 +1,14 @@
 import requests
 from bs4 import BeautifulSoup
-import csv
-import pandas as pd
 import time
 import sys
+import os
+import sys
 
+# Add the parent directory to sys.path to enable absolute imports
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from config.settings import AUTO_SELECT_FIRST_ITEM
 
-# Configuration
-AUTO_SELECT_FIRST_ITEM = True  # Set to True to auto-select the first item, False to prompt user
 
 def search_and_select(search_url):
     """
@@ -103,33 +104,39 @@ def extract_item_details(item_url):
             details['title'] = title_elem.get_text(strip=True)
         
         # Author
-        author = soup.find('b', string='Authors:').parent.find('a')
+        author_elem = soup.find('b', string='Authors:')
+        author = author_elem.parent.find('a') if author_elem else None
         if author:
             details['author'] = author.get_text(strip=True)
 
 
         # Artist
-        artist = soup.find('b', string='Artists:').parent.find('a')
+        artist_elem = soup.find('b', string='Artists:')
+        artist = artist_elem.parent.find('a') if artist_elem else None
         if artist:
             details['artist'] = artist.get_text(strip=True)
 
         # Genres
-        genres = soup.find('b', string='Genres:').parent.find('span')
+        genres_elem = soup.find('b', string='Genres:')
+        genres = genres_elem.parent.find('span') if genres_elem else None
         if genres:
             details['genres'] = genres.get_text(strip=True).split(',')
 
         # Language
-        language = soup.find('b', string='Translated language:').parent.find('span')
+        language_elem = soup.find('b', string='Translated language:')
+        language = language_elem.parent.find('span') if language_elem else None
         if language:
             details['language'] = language.get_text(strip=True)
         
         # Status
-        status = soup.find('b', string='Upload status:').parent.find('span')
+        status_elem = soup.find('b', string='Upload status:')
+        status = status_elem.parent.find('span') if status_elem else None
         if status:
             details['status'] = status.get_text(strip=True)
 
         # Release Date  
-        release_date = soup.find('b', string='Year of Release:').parent.find('span')
+        release_date_elem = soup.find('b', string='Year of Release:')
+        release_date = release_date_elem.parent.find('span') if release_date_elem else None
         if release_date:
             details['release_date'] = release_date.get_text(strip=True)
 
@@ -149,45 +156,8 @@ def extract_item_details(item_url):
                 chapters.append({'title': chapter_title, 'url': "https://mto.to" + chapter_url})
             details['chapters'] = chapters
         
-        
-        
         return details
         
     except requests.exceptions.RequestException as e:
         print(f"Error fetching the item details: {e}")
         return None
-
-def save_to_csv(details, filename='output.csv'):
-    """Save extracted details to a CSV file."""
-    keys = details.keys()
-    with open(filename, mode='w', newline='', encoding='utf-8') as file:
-        writer = csv.DictWriter(file, fieldnames=keys)
-        writer.writeheader()
-        writer.writerow(details)
-    print(f"\nData saved to {filename}")
-
-def save_to_excel(details, filename='output.xlsx'):
-    """Save extracted details to an Excel file."""
-    df = pd.DataFrame([details])
-    df.to_excel(filename, index=False)
-    print(f"\nData saved to {filename}")
-
-def main():
-    item_url = search_and_select('https://mto.to/search?word=Home')
-    if item_url:
-        details = extract_item_details(item_url)
-        if details:
-            print("\nExtracted Details:")
-            for key, value in details.items():
-                if key != 'properties':
-                    print(f"{key}: {value}")
-            if 'properties' in details:
-                print("\nProperties:")
-                for key, value in details['properties'].items():
-                    print(f"  {key}: {value}")
-            
-            # Save to CSV
-            save_to_csv(details)
-
-if __name__ == "__main__":
-    main()
